@@ -25,6 +25,20 @@ let targetRotY = 0;
 let isDraggingFlesh = false;
 let fleshHoverPos = null; // saved position flesh returns to if dropped wrong
 
+// Camera zoom (pinch-to-zoom)
+let cameraZoom = 1.0;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2.0;
+let pinchStartDist = 0;
+let pinchStartZoom = 1.0;
+let isPinching = false;
+
+// Camera target (smooth transitions between phases)
+let cameraTargetPos = new THREE.Vector3(0, 5, 9);
+let cameraLookTarget = new THREE.Vector3(0, 0, 0);
+let cameraBasePos = new THREE.Vector3(0, 5, 9);
+let cameraBaseLook = new THREE.Vector3(0, 0, 0);
+
 // Game phases: screws → knife → cut → lift → feed → reveal
 let gamePhase = 'screws';
 
@@ -101,7 +115,16 @@ function init() {
   canvas.addEventListener('pointermove', onPointerMove);
   canvas.addEventListener('pointerup', onPointerUp);
   canvas.addEventListener('pointerleave', onPointerUp);
+  // Pinch-to-zoom (touch events)
+  canvas.addEventListener('touchstart', onTouchStart, { passive: false });
+  canvas.addEventListener('touchmove', onTouchMove, { passive: false });
+  canvas.addEventListener('touchend', onTouchEnd);
+  // Mouse wheel zoom (desktop)
+  canvas.addEventListener('wheel', onWheel, { passive: false });
   document.getElementById('knife-btn').addEventListener('click', selectKnife);
+
+  // Set initial camera based on aspect ratio
+  adjustCameraForScreen();
 
   animate();
 }
@@ -690,7 +713,7 @@ function createHeartParticles() {
 
 // ──────────── INTERACTIONS ────────────
 function onPointerDown(e) {
-  if (animating) return;
+  if (animating || isPinching) return;
   updateMouse(e);
   raycaster.setFromCamera(mouse, camera);
 
@@ -762,6 +785,7 @@ function onPointerUp(e) {
 }
 
 function onPointerMove(e) {
+  if (isPinching) return;
   updateMouse(e);
 
   // Handle drag rotation (during screw phase)
@@ -899,6 +923,7 @@ function unscrewScrew(sg) {
 
 function onAllScrewsRemoved() {
   gamePhase = 'knife';
+  setCameraForPhase('knife');
   hideHint('hint');
   document.getElementById('sidebar').classList.remove('hidden');
   showHint('hint-knife');
@@ -938,9 +963,11 @@ function openOyster() {
     // Top shell hinges open like a clam lid lifting upward
     topShellPivot.rotation.z = ease * Math.PI * 0.45;
 
-    // Camera adjusts
+    // Camera adjusts (direct control during opening)
+    const aspect = window.innerWidth / window.innerHeight;
+    const extraPull = aspect < 1 ? (1 - aspect) * 4 : 0;
     camera.position.y = 5 - ease * 1.5;
-    camera.position.z = 9 - ease * 2;
+    camera.position.z = (9 + extraPull) - ease * 2;
     camera.lookAt(0, ease * -0.2, 0);
 
     // Show flesh partway through
@@ -953,6 +980,7 @@ function openOyster() {
     } else {
       animating = false;
       gamePhase = 'cut';
+      setCameraForPhase('cut');
       showHint('hint-cut');
     }
   }
@@ -1006,6 +1034,7 @@ function cutFlesh() {
       knifeModel.position.z = 2;
       animating = false;
       gamePhase = 'lift';
+      setCameraForPhase('lift');
 
       // Hide knife and sidebar
       knifeModel.visible = false;
@@ -1071,6 +1100,7 @@ function liftFlesh() {
 function bringDachshund() {
   dachshundGroup.visible = true;
   gamePhase = 'feed';
+  setCameraForPhase('feed');
   animating = true;
 
   const duration = 1200;
@@ -1174,6 +1204,7 @@ function returnFleshToHover() {
 function feedDachshund() {
   animating = true;
   gamePhase = 'eating';
+  setCameraForPhase('eating');
   hideHint('hint-feed');
 
   // Show tongue
@@ -1285,6 +1316,81 @@ function hideHint(id) {
   document.getElementById(id).classList.add('hidden');
 }
 
+// ──────────── PINCH-TO-ZOOM & WHEEL ZOOM ────────────
+function getTouchDist(e) {
+  const dx = e.touches[0].clientX - e.touches[1].clientX;
+  const dy = e.touches[0].clientY - e.touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function onTouchStart(e) {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    isPinching = true;
+    pinchStartDist = getTouchDist(e);
+    pinchStartZoom = cameraZoom;
+  }
+}
+
+function onTouchMove(e) {
+  if (e.touches.length === 2 && isPinching) {
+    e.preventDefault();
+    const dist = getTouchDist(e);
+    const scale = dist / pinchStartDist;
+    cameraZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, pinchStartZoom * scale));
+  }
+}
+
+function onTouchEnd(e) {
+  if (e.touches.length < 2) {
+    isPinching = false;
+  }
+}
+
+function onWheel(e) {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? -0.08 : 0.08;
+  cameraZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, cameraZoom + delta));
+}
+
+// ──────────── CAMERA MANAGEMENT ────────────
+function adjustCameraForScreen() {
+  // On narrow/portrait screens, pull camera back so oyster fits
+  const aspect = window.innerWidth / window.innerHeight;
+  const extraPull = aspect < 1 ? (1 - aspect) * 4 : 0; // extra Z on portrait
+  cameraBasePos.set(0, 5, 9 + extraPull);
+  cameraBaseLook.set(0, 0, 0);
+  cameraTargetPos.copy(cameraBasePos);
+  cameraLookTarget.copy(cameraBaseLook);
+}
+
+function setCameraForPhase(phase) {
+  const aspect = window.innerWidth / window.innerHeight;
+  const extraPull = aspect < 1 ? (1 - aspect) * 4 : 0;
+
+  switch (phase) {
+    case 'screws':
+    case 'knife':
+      cameraTargetPos.set(0, 5, 9 + extraPull);
+      cameraLookTarget.set(0, 0, 0);
+      break;
+    case 'cut':
+    case 'lift':
+      cameraTargetPos.set(0, 3.5, 7 + extraPull);
+      cameraLookTarget.set(0, -0.2, 0);
+      break;
+    case 'feed':
+      // Pull back and shift right to show both flesh and dog
+      cameraTargetPos.set(1.5, 3.5, 8 + extraPull);
+      cameraLookTarget.set(1.5, 0.5, 0);
+      break;
+    case 'eating':
+      cameraTargetPos.set(2, 2.5, 6 + extraPull);
+      cameraLookTarget.set(2, 0.2, 0);
+      break;
+  }
+}
+
 // ──────────── ANIMATE LOOP ────────────
 function animate() {
   requestAnimationFrame(animate);
@@ -1344,6 +1450,21 @@ function animate() {
     }
   }
 
+  // Smooth camera transitions (skip during opening animation which handles its own camera)
+  if (gamePhase !== 'opening') {
+    const lerpSpeed = 0.04;
+    // Apply zoom: move camera along the camera→lookTarget axis
+    const zoomedPos = cameraTargetPos.clone().sub(cameraLookTarget)
+      .multiplyScalar(1 / cameraZoom).add(cameraLookTarget);
+    camera.position.lerp(zoomedPos, lerpSpeed);
+    // Smooth look target
+    const currentLook = new THREE.Vector3();
+    camera.getWorldDirection(currentLook);
+    currentLook.multiplyScalar(10).add(camera.position); // approximate current look target
+    currentLook.lerp(cameraLookTarget, lerpSpeed);
+    camera.lookAt(cameraLookTarget);
+  }
+
   renderer.render(scene, camera);
 }
 
@@ -1352,6 +1473,8 @@ function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  // Re-adjust camera targets for new screen dimensions
+  if (gamePhase) setCameraForPhase(gamePhase);
 }
 
 // ──────────── START ────────────
