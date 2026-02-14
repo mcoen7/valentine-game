@@ -6,7 +6,7 @@
 
 body {
   overflow: hidden;
-  background: linear-gradient(135deg, #1a0a10, #2d0a1e, #1a0a10);
+  background: linear-gradient(135deg, #2d1520, #3d1a2e, #2d1520);
   font-family: 'Georgia', 'Times New Roman', serif;
   color: #fff;
   touch-action: none;
@@ -24,7 +24,7 @@ body {
 #overlay {
   position: fixed;
   inset: 0;
-  background: radial-gradient(ellipse at center, #2d0a1eee, #1a0a10ff);
+  background: radial-gradient(ellipse at center, #3d1a2eee, #2d1520ff);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -129,7 +129,7 @@ body {
   bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
-  background: #2d0a1ecc;
+  background: #3d1a2ecc;
   backdrop-filter: blur(8px);
   border: 1px solid #e8587a55;
   padding: 10px 24px;
@@ -146,7 +146,7 @@ body {
   bottom: 32px;
   left: 50%;
   transform: translateX(-50%);
-  background: #2d0a1ecc;
+  background: #3d1a2ecc;
   backdrop-filter: blur(8px);
   border: 1px solid #e8587a55;
   padding: 10px 24px;
@@ -168,7 +168,7 @@ body {
 #reveal {
   position: fixed;
   inset: 0;
-  background: radial-gradient(ellipse at center, #2d0a1e, #1a0a10);
+  background: radial-gradient(ellipse at center, #3d1a2e, #2d1520);
   z-index: 200;
   display: flex;
   align-items: center;

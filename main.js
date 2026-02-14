@@ -57,7 +57,7 @@ const C = {
   dogBody:     0x8b4513, // brown dachshund
   dogDark:     0x6b3410, // darker brown
   dogNose:     0x1a1a1a,
-  bg:          0x1a0a10,
+  bg:          0x2d1520,
   accent:      0xe8587a,
   highlight:   0xff7e9d,
 };
@@ -66,7 +66,7 @@ const C = {
 function init() {
   scene = new THREE.Scene();
   scene.background = new THREE.Color(C.bg);
-  scene.fog = new THREE.FogExp2(C.bg, 0.012);
+  scene.fog = new THREE.FogExp2(C.bg, 0.008);
 
   camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
   camera.position.set(0, 5, 9);
@@ -80,7 +80,7 @@ function init() {
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   // Lights
-  scene.add(new THREE.AmbientLight(0xffc0cb, 0.4));
+  scene.add(new THREE.AmbientLight(0xffc0cb, 0.65));
 
   const key = new THREE.DirectionalLight(0xfff5ee, 1.0);
   key.position.set(5, 10, 5);
@@ -133,7 +133,7 @@ function init() {
 function createSurface() {
   const geo = new THREE.PlaneGeometry(20, 20);
   const mat = new THREE.MeshStandardMaterial({
-    color: 0x1a0e1a,
+    color: 0x2a1a25,
     roughness: 0.9,
     metalness: 0.0,
   });
