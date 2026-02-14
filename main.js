@@ -42,6 +42,186 @@ let cameraBaseLook = new THREE.Vector3(0, 0, 0);
 // Game phases: screws → knife → cut → lift → feed → reveal
 let gamePhase = 'screws';
 
+// ── Audio ──
+let audioCtx = null;
+
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+function playTone(freq, duration, type, volume, detune) {
+  const ctx = ensureAudio();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type || 'sine';
+  osc.frequency.value = freq;
+  if (detune) osc.detune.value = detune;
+  gain.gain.setValueAtTime(volume || 0.15, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + duration);
+}
+
+function playNoise(duration, volume, filterFreq) {
+  const ctx = ensureAudio();
+  const bufferSize = ctx.sampleRate * duration;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = filterFreq || 800;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(volume || 0.1, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+  src.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+  src.start();
+  src.stop(ctx.currentTime + duration);
+}
+
+function sfxScrewTap() {
+  playTone(800, 0.08, 'square', 0.07);
+  playTone(1200, 0.06, 'sine', 0.05);
+}
+
+function sfxScrewOut() {
+  // Rising metallic spin + pop
+  const ctx = ensureAudio();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(400, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.3);
+  gain.gain.setValueAtTime(0.08, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.4);
+  // Pop at the end
+  setTimeout(() => playTone(600, 0.06, 'sine', 0.12), 300);
+}
+
+function sfxAllScrewsDone() {
+  // Cheerful ascending chime
+  [523, 659, 784, 1047].forEach((f, i) => {
+    setTimeout(() => playTone(f, 0.3, 'sine', 0.1), i * 100);
+  });
+}
+
+function sfxKnifeSelect() {
+  // Metallic ring
+  playTone(2000, 0.15, 'sine', 0.06);
+  playTone(3000, 0.1, 'sine', 0.04);
+  playNoise(0.05, 0.06, 4000);
+}
+
+function sfxShellOpen() {
+  // Creaky hinge
+  const ctx = ensureAudio();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(150, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(80, ctx.currentTime + 0.6);
+  osc.frequency.linearRampToValueAtTime(200, ctx.currentTime + 0.8);
+  gain.gain.setValueAtTime(0.04, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.06, ctx.currentTime + 0.4);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + 1.0);
+}
+
+function sfxCut() {
+  // Quick slice
+  playNoise(0.15, 0.1, 3000);
+  playTone(400, 0.1, 'triangle', 0.06);
+  setTimeout(() => playNoise(0.08, 0.06, 2000), 100);
+}
+
+function sfxLift() {
+  // Wet squelch
+  playNoise(0.2, 0.08, 600);
+  playTone(200, 0.15, 'sine', 0.05);
+  setTimeout(() => playTone(300, 0.1, 'sine', 0.04), 100);
+}
+
+function sfxDogEnter() {
+  // Playful yip yip
+  [0, 200, 500].forEach((delay) => {
+    setTimeout(() => {
+      playTone(800 + Math.random() * 200, 0.08, 'square', 0.06);
+      playTone(1000 + Math.random() * 200, 0.06, 'sine', 0.04);
+    }, delay);
+  });
+}
+
+function sfxChomp() {
+  playNoise(0.08, 0.1, 1500);
+  playTone(200, 0.05, 'square', 0.06);
+}
+
+function sfxHappyBark() {
+  // Excited bark
+  playTone(600, 0.1, 'square', 0.08);
+  playTone(900, 0.08, 'sine', 0.06);
+}
+
+function sfxFart() {
+  // The classic — low rumbling buzz
+  const ctx = ensureAudio();
+  const osc = ctx.createOscillator();
+  const osc2 = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(80, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 0.3);
+  osc.frequency.linearRampToValueAtTime(120, ctx.currentTime + 0.5);
+  osc.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.8);
+  osc2.type = 'square';
+  osc2.frequency.setValueAtTime(60, ctx.currentTime);
+  osc2.frequency.linearRampToValueAtTime(40, ctx.currentTime + 0.5);
+  osc2.frequency.exponentialRampToValueAtTime(20, ctx.currentTime + 0.8);
+  gain.gain.setValueAtTime(0.0, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.05);
+  gain.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.3);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+  osc.connect(gain);
+  osc2.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc2.start();
+  osc.stop(ctx.currentTime + 0.9);
+  osc2.stop(ctx.currentTime + 0.9);
+  // Add some noise for texture
+  playNoise(0.6, 0.06, 200);
+}
+
+function sfxBubblePop() {
+  playTone(1500 + Math.random() * 500, 0.06, 'sine', 0.04);
+}
+
+function sfxRevealChime() {
+  // Magical ascending sparkle
+  const notes = [523, 659, 784, 1047, 1319, 1568];
+  notes.forEach((f, i) => {
+    setTimeout(() => {
+      playTone(f, 0.5, 'sine', 0.08);
+      playTone(f * 1.5, 0.3, 'sine', 0.03); // harmonic shimmer
+    }, i * 120);
+  });
+}
+
 // ── Colours ──
 const C = {
   shellOuter:  0x8b7d6b, // rough grey-brown oyster exterior
@@ -886,6 +1066,7 @@ function handleScrewClick() {
     let sg = hits[0].object;
     while (sg.parent && !sg.userData.isScrew) sg = sg.parent;
     if (sg.userData.isScrew && !sg.userData.removed) {
+      sfxScrewTap();
       unscrewScrew(sg);
     }
   }
@@ -915,6 +1096,7 @@ function unscrewScrew(sg) {
     } else {
       sg.visible = false;
       animating = false;
+      sfxScrewOut();
       if (screwsRemoved >= TOTAL_SCREWS) onAllScrewsRemoved();
     }
   }
@@ -927,6 +1109,7 @@ function onAllScrewsRemoved() {
   hideHint('hint');
   document.getElementById('sidebar').classList.remove('hidden');
   showHint('hint-knife');
+  sfxAllScrewsDone();
 }
 
 // ── Phase: Knife (open shell) ──
@@ -935,6 +1118,7 @@ function selectKnife() {
   knifeSelected = true;
   document.getElementById('knife-btn').classList.add('selected');
   knifeModel.visible = true;
+  sfxKnifeSelect();
 }
 
 function handleShellClick() {
@@ -952,6 +1136,7 @@ function openOyster() {
   animating = true;
   gamePhase = 'opening';
   hideHint('hint-knife');
+  sfxShellOpen();
 
   const duration = 1400;
   const startTime = performance.now();
@@ -1000,6 +1185,7 @@ function cutFlesh() {
   animating = true;
   fleshCut = true;
   hideHint('hint-cut');
+  sfxCut();
 
   // Knife stab animation
   const duration = 600;
@@ -1063,6 +1249,7 @@ function liftFlesh() {
   animating = true;
   fleshLifted = true;
   hideHint('hint-lift');
+  sfxLift();
 
   // Reparent flesh from oysterGroup to scene (world coords) so dragging works freely
   const worldPos = new THREE.Vector3();
@@ -1102,6 +1289,7 @@ function bringDachshund() {
   gamePhase = 'feed';
   setCameraForPhase('feed');
   animating = true;
+  sfxDogEnter();
 
   const duration = 1200;
   const startTime = performance.now();
@@ -1206,6 +1394,8 @@ function feedDachshund() {
   gamePhase = 'eating';
   setCameraForPhase('eating');
   hideHint('hint-feed');
+  // Chomp sounds during eating
+  for (let i = 0; i < 6; i++) setTimeout(sfxChomp, i * 220);
 
   // Show tongue
   dachshundGroup.userData.tongue.visible = true;
@@ -1255,6 +1445,8 @@ function feedDachshund() {
 }
 
 function happyDog(startNow) {
+  sfxHappyBark();
+  setTimeout(sfxHappyBark, 300);
   const duration = 1200;
   const startTime = startNow || performance.now();
 
@@ -1322,6 +1514,7 @@ function showReveal() {
   dachshundGroup.localToWorld(buttWorld);
 
   // Dog does a little jump when it farts
+  sfxFart();
   const startY = dachshundGroup.position.y;
   dachshundGroup.position.y = startY + 0.15;
   setTimeout(() => { dachshundGroup.position.y = startY; }, 150);
@@ -1403,6 +1596,7 @@ function spawnSmallBubble(origin) {
   bubble.userData.life = 1.0;
   scene.add(bubble);
   fartBubbles.push(bubble);
+  sfxBubblePop();
 }
 
 function growBigBubble(origin) {
@@ -1449,6 +1643,7 @@ function growBigBubble(origin) {
 }
 
 function showBubbleText() {
+  sfxRevealChime();
   const reveal = document.getElementById('reveal');
   reveal.classList.remove('hidden');
   void reveal.offsetWidth;
