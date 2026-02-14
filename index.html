@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Happy Valentine's Day 💕</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="overlay">
+    <h1>💕</h1>
+    <p>A little something for you, my most special beure....</p>
+    <button id="start-btn">Open</button>
+  </div>
+
+  <canvas id="game-canvas"></canvas>
+
+  <div id="sidebar" class="hidden">
+    <h3>🔪 Tools</h3>
+    <div id="knife-btn">
+      <div class="knife-icon">🦪🔪</div>
+      <span>Oyster Knife</span>
+    </div>
+  </div>
+
+  <div id="hint" class="hidden">Tap screws to unscrew — drag to rotate!</div>
+  <div id="hint-knife" class="hidden">Select the knife, then tap the oyster!</div>
+  <div id="hint-cut" class="hidden">Move the knife over the flesh — click when the blade glows!</div>
+  <div id="hint-lift" class="hidden">Tap the oyster meat to pick it up!</div>
+  <div id="hint-feed" class="hidden">Drag the oyster to the dachshund!</div>
+
+  <div id="reveal" class="hidden">
+    <div id="reveal-content">
+      <h1>Will you be my Valentine? 💕</h1>
+      <div class="hearts-bg"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
