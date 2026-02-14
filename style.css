@@ -164,11 +164,11 @@ body {
   pointer-events: none;
 }
 
-/* ── Reveal screen ── */
+/* ── Reveal screen (fart bubble text overlay) ── */
 #reveal {
   position: fixed;
   inset: 0;
-  background: radial-gradient(ellipse at center, #3d1a2e, #2d1520);
+  background: transparent;
   z-index: 200;
   display: flex;
   align-items: center;
@@ -191,12 +191,15 @@ body {
   text-align: center;
   position: relative;
   z-index: 2;
+  padding: 30px 40px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(255,220,238,0.15), transparent 70%);
 }
 
 #reveal-content h1 {
-  font-size: clamp(28px, 8vw, 56px);
+  font-size: clamp(24px, 7vw, 48px);
   color: #ffb6c8;
-  text-shadow: 0 0 40px #e8587a88, 0 0 80px #e8587a44;
+  text-shadow: 0 0 40px #e8587a88, 0 0 80px #e8587a44, 0 2px 8px rgba(0,0,0,0.5);
   animation: revealPulse 2s ease-in-out infinite;
   line-height: 1.3;
 }

@@ -1278,14 +1278,101 @@ function happyDog(startNow) {
   requestAnimationFrame(anim);
 }
 
-// ──────────── REVEAL ────────────
+// ──────────── REVEAL (FART BUBBLE) ────────────
+let fartBubbles = [];
+let bigBubble = null;
+
 function showReveal() {
   gamePhase = 'reveal';
+  setCameraForPhase('reveal');
+
+  // Get the dog's rear position in world space
+  const tailWorld = new THREE.Vector3(-1.5, 0.2, 0);
+  dachshundGroup.localToWorld(tailWorld);
+
+  // Spawn small fart bubbles first
+  for (let i = 0; i < 8; i++) {
+    setTimeout(() => spawnSmallBubble(tailWorld.clone()), i * 120);
+  }
+
+  // After small bubbles, grow the big message bubble
+  setTimeout(() => growBigBubble(tailWorld.clone()), 800);
+}
+
+function spawnSmallBubble(origin) {
+  const size = 0.08 + Math.random() * 0.12;
+  const geo = new THREE.SphereGeometry(size, 12, 12);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffddee,
+    transparent: true,
+    opacity: 0.45,
+    roughness: 0.1,
+    metalness: 0.3,
+    emissive: 0xffaacc,
+    emissiveIntensity: 0.15,
+  });
+  const bubble = new THREE.Mesh(geo, mat);
+  bubble.position.copy(origin);
+  bubble.position.x += (Math.random() - 0.5) * 0.3;
+  bubble.position.z += (Math.random() - 0.5) * 0.3;
+  bubble.userData.velocity = new THREE.Vector3(
+    (Math.random() - 0.5) * 0.01,
+    0.015 + Math.random() * 0.01,
+    (Math.random() - 0.5) * 0.01
+  );
+  bubble.userData.life = 1.0;
+  scene.add(bubble);
+  fartBubbles.push(bubble);
+}
+
+function growBigBubble(origin) {
+  const geo = new THREE.SphereGeometry(1, 32, 32);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xffe0ee,
+    transparent: true,
+    opacity: 0.0,
+    roughness: 0.05,
+    metalness: 0.2,
+    emissive: 0xffbbdd,
+    emissiveIntensity: 0.2,
+    side: THREE.DoubleSide,
+  });
+  bigBubble = new THREE.Mesh(geo, mat);
+  bigBubble.position.copy(origin);
+  bigBubble.position.y += 0.3;
+  bigBubble.scale.set(0.01, 0.01, 0.01);
+  scene.add(bigBubble);
+
+  // Animate the bubble growing
+  const startTime = performance.now();
+  const duration = 1200;
+  const targetScale = 1.8;
+
+  function animGrow(now) {
+    const t = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 3); // ease out cubic
+    const s = 0.01 + ease * targetScale;
+    bigBubble.scale.set(s, s, s);
+    bigBubble.material.opacity = ease * 0.35;
+    // Float upward gently as it grows
+    bigBubble.position.y = origin.y + 0.3 + ease * 1.5;
+
+    if (t < 1) {
+      requestAnimationFrame(animGrow);
+    } else {
+      // Show the text overlay positioned over the bubble
+      showBubbleText();
+      spawnFloatingHearts();
+    }
+  }
+  requestAnimationFrame(animGrow);
+}
+
+function showBubbleText() {
   const reveal = document.getElementById('reveal');
   reveal.classList.remove('hidden');
   void reveal.offsetWidth;
   reveal.classList.add('show');
-  spawnFloatingHearts();
 }
 
 function spawnFloatingHearts() {
@@ -1388,6 +1475,11 @@ function setCameraForPhase(phase) {
       cameraTargetPos.set(2, 2.5, 6 + extraPull);
       cameraLookTarget.set(2, 0.2, 0);
       break;
+    case 'reveal':
+      // Frame the dog and the bubble above it
+      cameraTargetPos.set(1.5, 2.5, 7 + extraPull);
+      cameraLookTarget.set(1.5, 1.2, 0);
+      break;
   }
 }
 
@@ -1448,6 +1540,26 @@ function animate() {
       fleshGroup.position.y = fleshHoverPos.y + Math.sin(time * 2) * 0.1;
       fleshGroup.rotation.z = Math.sin(time * 1.5) * 0.05;
     }
+  }
+
+  // Fart bubbles animation
+  for (let i = fartBubbles.length - 1; i >= 0; i--) {
+    const b = fartBubbles[i];
+    b.position.add(b.userData.velocity);
+    b.userData.life -= 0.012;
+    b.material.opacity = Math.max(0, b.userData.life * 0.5);
+    b.scale.multiplyScalar(1.003); // slowly expand
+    if (b.userData.life <= 0) {
+      scene.remove(b);
+      fartBubbles.splice(i, 1);
+    }
+  }
+
+  // Big bubble gentle wobble
+  if (bigBubble) {
+    bigBubble.rotation.y = time * 0.3;
+    bigBubble.position.x += Math.sin(time * 1.5) * 0.001;
+    bigBubble.position.y += Math.sin(time * 0.8) * 0.0005;
   }
 
   // Smooth camera transitions (skip during opening animation which handles its own camera)
