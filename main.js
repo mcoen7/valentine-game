@@ -1187,8 +1187,10 @@ function openOyster() {
 
     // Camera adjusts (direct control during opening)
     const aspect = window.innerWidth / window.innerHeight;
-    const extraPull = aspect < 1 ? (1 - aspect) * 4 : 0;
-    camera.position.y = 5 - ease * 1.5;
+    const portrait = aspect < 1;
+    const extraPull = portrait ? (1 - aspect) * 8 : 0;
+    const extraY = portrait ? 1.5 : 0;
+    camera.position.y = (5 + extraY) - ease * 1.5;
     camera.position.z = (9 + extraPull) - ease * 2;
     camera.lookAt(0, ease * -0.2, 0);
 
@@ -1745,44 +1747,58 @@ function onWheel(e) {
 }
 
 // ──────────── CAMERA MANAGEMENT ────────────
+function isPortrait() {
+  return window.innerWidth / window.innerHeight < 1;
+}
+
 function adjustCameraForScreen() {
-  // On narrow/portrait screens, pull camera back so oyster fits
+  const portrait = isPortrait();
   const aspect = window.innerWidth / window.innerHeight;
-  const extraPull = aspect < 1 ? (1 - aspect) * 4 : 0; // extra Z on portrait
+  // Much more aggressive pullback on portrait — narrow FOV needs more distance
+  const extraPull = portrait ? (1 - aspect) * 8 : 0;
   cameraBasePos.set(0, 5, 9 + extraPull);
   cameraBaseLook.set(0, 0, 0);
   cameraTargetPos.copy(cameraBasePos);
   cameraLookTarget.copy(cameraBaseLook);
+
+  // Wider FOV on portrait to show more of the scene
+  if (camera) {
+    camera.fov = portrait ? 65 : 50;
+    camera.updateProjectionMatrix();
+  }
 }
 
 function setCameraForPhase(phase) {
+  const portrait = isPortrait();
   const aspect = window.innerWidth / window.innerHeight;
-  const extraPull = aspect < 1 ? (1 - aspect) * 4 : 0;
+  const extraPull = portrait ? (1 - aspect) * 8 : 0;
+  // On portrait, also raise camera higher to see more vertically
+  const extraY = portrait ? 1.5 : 0;
 
   switch (phase) {
     case 'screws':
     case 'knife':
-      cameraTargetPos.set(0, 5, 9 + extraPull);
+      cameraTargetPos.set(0, 5 + extraY, 9 + extraPull);
       cameraLookTarget.set(0, 0, 0);
       break;
     case 'cut':
     case 'lift':
-      cameraTargetPos.set(0, 3.5, 7 + extraPull);
+      cameraTargetPos.set(0, 3.5 + extraY, 7 + extraPull);
       cameraLookTarget.set(0, -0.2, 0);
       break;
     case 'feed':
-      // Pull back and shift right to show both flesh and dog
-      cameraTargetPos.set(1.5, 3.5, 8 + extraPull);
-      cameraLookTarget.set(1.5, 0.5, 0);
+      // Center between flesh and dog, pull back enough to show both
+      cameraTargetPos.set(1.2, 3.5 + extraY, 10 + extraPull);
+      cameraLookTarget.set(1.2, 0.8, 0);
       break;
     case 'eating':
-      cameraTargetPos.set(2, 2.5, 6 + extraPull);
-      cameraLookTarget.set(2, 0.2, 0);
+      cameraTargetPos.set(1.8, 2.5 + extraY, 8 + extraPull);
+      cameraLookTarget.set(1.8, 0.2, 0);
       break;
     case 'reveal':
-      // Zoom out to show dog, bubble, and text all together
-      cameraTargetPos.set(1.5, 3, 10 + extraPull);
-      cameraLookTarget.set(1.5, 1.5, 0);
+      // Zoom out significantly to show dog, fart bubble, and text
+      cameraTargetPos.set(1.2, 4 + extraY, 13 + extraPull);
+      cameraLookTarget.set(1.2, 1.5, 0);
       break;
   }
 }
@@ -1894,6 +1910,8 @@ function animate() {
 // ──────────── RESIZE ────────────
 function onResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
+  // Adjust FOV for portrait
+  camera.fov = isPortrait() ? 65 : 50;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
   // Re-adjust camera targets for new screen dimensions
