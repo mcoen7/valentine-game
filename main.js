@@ -13,6 +13,10 @@ let knifeSelected = false;
 let animating = false;
 let fleshLifted = false;
 let fleshCut = false;
+let cutProgress = 0;       // 0 to 1 — how much the oyster has been cut
+const CUT_THRESHOLD = 1.0; // need to fill the bar to complete the cut
+let lastKnifePos = null;    // track knife movement for sawing detection
+let isCutting = false;      // is the pointer down during cut phase
 
 // Drag rotation
 let isDragging = false;
@@ -931,7 +935,8 @@ function onPointerDown(e) {
   if (gamePhase === 'knife' && knifeSelected) {
     handleShellClick();
   } else if (gamePhase === 'cut' && knifeSelected) {
-    handleCutClick();
+    isCutting = true;
+    lastKnifePos = { x: e.clientX, y: e.clientY };
   } else if (gamePhase === 'lift') {
     handleLiftClick();
   } else if (gamePhase === 'feed') {
@@ -941,6 +946,8 @@ function onPointerDown(e) {
 
 function onPointerUp(e) {
   isDragging = false;
+  isCutting = false;
+  lastKnifePos = null;
 
   // Drop flesh during feed phase
   if (isDraggingFlesh && gamePhase === 'feed') {
@@ -997,27 +1004,57 @@ function onPointerMove(e) {
       knifeModel.position.z = 2;
     }
 
-    // During cut phase, highlight knife when over the actual meat (not frills/decorations)
-    if (gamePhase === 'cut') {
+    // During cut phase, track sawing motion over the meat
+    if (gamePhase === 'cut' && !fleshCut) {
       const meatMeshes = [fleshMesh, adductorMuscle].filter(Boolean);
       const overFlesh = raycaster.intersectObjects(meatMeshes).length > 0;
 
       // Glow the blade when it's in the cut zone
       knifeModel.traverse(c => {
         if (c.material && c.material.metalness > 0.5) {
-          // Metal parts (blade, bolster)
-          if (overFlesh) {
+          if (overFlesh && isCutting) {
+            c.material.emissive = c.material.emissive || new THREE.Color();
+            c.material.emissive.setHex(0xff2244);
+            c.material.emissiveIntensity = 0.6;
+          } else if (overFlesh) {
             c.material.emissive = c.material.emissive || new THREE.Color();
             c.material.emissive.setHex(0xff4466);
-            c.material.emissiveIntensity = 0.4;
+            c.material.emissiveIntensity = 0.3;
           } else {
             c.material.emissiveIntensity = 0;
           }
         }
       });
 
-      // Tilt the knife slightly to show readiness
-      knifeModel.rotation.z = overFlesh ? -0.35 : -0.2;
+      // Tilt the knife more when actively sawing
+      knifeModel.rotation.z = (overFlesh && isCutting) ? -0.4 : overFlesh ? -0.3 : -0.2;
+
+      // Accumulate cut progress when sawing over meat
+      if (isCutting && overFlesh && lastKnifePos) {
+        const dx = e.clientX - lastKnifePos.x;
+        const dy = e.clientY - lastKnifePos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        // Only count actual movement (not just holding still)
+        if (dist > 2) {
+          cutProgress = Math.min(cutProgress + dist * 0.003, CUT_THRESHOLD);
+          // Knife vibration feedback — small random jitter
+          knifeModel.position.x += (Math.random() - 0.5) * 0.03;
+          knifeModel.position.y += (Math.random() - 0.5) * 0.02;
+          // Play occasional cut sound
+          if (Math.random() < 0.08) sfxCut();
+          // Flesh jiggles while being cut, more as progress increases
+          fleshGroup.position.x = (Math.random() - 0.5) * 0.02 * cutProgress;
+          // Update progress bar
+          const pct = Math.min(cutProgress / CUT_THRESHOLD * 100, 100);
+          document.getElementById('cut-progress-fill').style.width = pct + '%';
+
+          if (cutProgress >= CUT_THRESHOLD) {
+            isCutting = false;
+            cutFlesh();
+          }
+        }
+      }
+      lastKnifePos = { x: e.clientX, y: e.clientY };
     }
 
     document.body.style.cursor = 'none';
@@ -1173,14 +1210,6 @@ function openOyster() {
 }
 
 // ── Phase: Cut flesh ──
-function handleCutClick() {
-  const meatMeshes = [fleshMesh, adductorMuscle].filter(Boolean);
-  const hits = raycaster.intersectObjects(meatMeshes);
-  if (hits.length > 0) {
-    cutFlesh();
-  }
-}
-
 function cutFlesh() {
   animating = true;
   fleshCut = true;
@@ -1751,9 +1780,9 @@ function setCameraForPhase(phase) {
       cameraLookTarget.set(2, 0.2, 0);
       break;
     case 'reveal':
-      // Frame the dog and the bubble above it
-      cameraTargetPos.set(1.5, 2.5, 7 + extraPull);
-      cameraLookTarget.set(1.5, 1.2, 0);
+      // Zoom out to show dog, bubble, and text all together
+      cameraTargetPos.set(1.5, 3, 10 + extraPull);
+      cameraLookTarget.set(1.5, 1.5, 0);
       break;
   }
 }
@@ -1796,12 +1825,17 @@ function animate() {
     }
   });
 
-  // Adductor muscle pulse during cut phase (shows where to cut)
+  // Adductor muscle shows cut progress during cut phase
   if (adductorMuscle && gamePhase === 'cut') {
-    adductorMuscle.material.emissive.setHex(0xff6688);
-    adductorMuscle.material.emissiveIntensity = 0.15 + Math.sin(time * 4) * 0.15;
-    // Subtle scale pulse
-    const pulse = 1 + Math.sin(time * 4) * 0.06;
+    // Color shifts from pink to red as cut progresses
+    const r = 1.0;
+    const g = 0.4 * (1 - cutProgress);
+    const b = 0.5 * (1 - cutProgress);
+    adductorMuscle.material.emissive.setRGB(r, g, b);
+    adductorMuscle.material.emissiveIntensity = 0.15 + cutProgress * 0.35 + Math.sin(time * 4) * 0.1;
+    // Pulse faster as progress increases
+    const pulseSpeed = 4 + cutProgress * 6;
+    const pulse = 1 + Math.sin(time * pulseSpeed) * (0.04 + cutProgress * 0.06);
     adductorMuscle.scale.set(pulse, 1, pulse);
   }
 
