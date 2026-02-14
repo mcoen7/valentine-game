@@ -1272,7 +1272,7 @@ function happyDog(startNow) {
       requestAnimationFrame(anim);
     } else {
       dachshundGroup.userData.tongue.visible = false;
-      setTimeout(showReveal, 600);
+      setTimeout(doFartSquat, 400);
     }
   }
   requestAnimationFrame(anim);
@@ -1281,44 +1281,124 @@ function happyDog(startNow) {
 // ──────────── REVEAL (FART BUBBLE) ────────────
 let fartBubbles = [];
 let bigBubble = null;
+let fartCloud = null;
+
+function doFartSquat() {
+  // Dog squats down comically before farting
+  const startTime = performance.now();
+  const squatDuration = 500;
+  const startY = dachshundGroup.position.y;
+  const tail = dachshundGroup.userData.tail;
+
+  function animSquat(now) {
+    const t = Math.min((now - startTime) / squatDuration, 1);
+
+    // Squat down — rear dips, front stays
+    dachshundGroup.rotation.x = Math.sin(t * Math.PI) * 0.15; // tilt butt down
+    dachshundGroup.position.y = startY - Math.sin(t * Math.PI) * 0.12;
+
+    // Tail lifts up to "prepare"
+    tail.rotation.z = -0.8 + t * 0.6;
+    tail.rotation.x = Math.sin(now * 0.05) * 0.3;
+
+    if (t < 1) {
+      requestAnimationFrame(animSquat);
+    } else {
+      dachshundGroup.rotation.x = 0;
+      dachshundGroup.position.y = startY;
+      tail.rotation.z = -0.8;
+      showReveal();
+    }
+  }
+  requestAnimationFrame(animSquat);
+}
 
 function showReveal() {
   gamePhase = 'reveal';
   setCameraForPhase('reveal');
 
-  // Get the dog's rear position in world space
-  const tailWorld = new THREE.Vector3(-1.5, 0.2, 0);
-  dachshundGroup.localToWorld(tailWorld);
+  // Get the dog's rear/butt position in world space
+  const buttWorld = new THREE.Vector3(-1.5, 0.1, 0);
+  dachshundGroup.localToWorld(buttWorld);
 
-  // Spawn small fart bubbles first
-  for (let i = 0; i < 8; i++) {
-    setTimeout(() => spawnSmallBubble(tailWorld.clone()), i * 120);
+  // Dog does a little jump when it farts
+  const startY = dachshundGroup.position.y;
+  dachshundGroup.position.y = startY + 0.15;
+  setTimeout(() => { dachshundGroup.position.y = startY; }, 150);
+
+  // 1) Spawn the green puff cloud first
+  spawnFartCloud(buttWorld.clone());
+
+  // 2) Burst of small bubbles from the butt
+  for (let i = 0; i < 15; i++) {
+    setTimeout(() => spawnSmallBubble(buttWorld.clone()), i * 80);
   }
 
-  // After small bubbles, grow the big message bubble
-  setTimeout(() => growBigBubble(tailWorld.clone()), 800);
+  // 3) After bubbles, grow the big message bubble
+  setTimeout(() => growBigBubble(buttWorld.clone()), 1000);
+}
+
+function spawnFartCloud(origin) {
+  // A green-tinted puff cloud that expands and fades
+  const geo = new THREE.SphereGeometry(0.3, 16, 16);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0xb8e8a0,
+    transparent: true,
+    opacity: 0.5,
+    roughness: 0.9,
+    metalness: 0.0,
+    emissive: 0x88cc66,
+    emissiveIntensity: 0.3,
+  });
+  fartCloud = new THREE.Mesh(geo, mat);
+  fartCloud.position.copy(origin);
+  fartCloud.scale.set(0.3, 0.3, 0.3);
+  scene.add(fartCloud);
+
+  // Animate cloud expanding and fading
+  const startTime = performance.now();
+  const duration = 1500;
+
+  function animCloud(now) {
+    const t = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - t, 2);
+    const s = 0.3 + ease * 2.0;
+    fartCloud.scale.set(s, s * 0.7, s); // squashed sphere = cloud shape
+    fartCloud.material.opacity = 0.5 * (1 - t);
+    fartCloud.position.y = origin.y + ease * 0.5;
+
+    if (t < 1) {
+      requestAnimationFrame(animCloud);
+    } else {
+      scene.remove(fartCloud);
+      fartCloud = null;
+    }
+  }
+  requestAnimationFrame(animCloud);
 }
 
 function spawnSmallBubble(origin) {
-  const size = 0.08 + Math.random() * 0.12;
+  const size = 0.12 + Math.random() * 0.18;
   const geo = new THREE.SphereGeometry(size, 12, 12);
+  // Mix of green-tinted and pink bubbles
+  const isStinky = Math.random() < 0.4;
   const mat = new THREE.MeshStandardMaterial({
-    color: 0xffddee,
+    color: isStinky ? 0xcceeaa : 0xffddee,
     transparent: true,
-    opacity: 0.45,
+    opacity: 0.55,
     roughness: 0.1,
     metalness: 0.3,
-    emissive: 0xffaacc,
-    emissiveIntensity: 0.15,
+    emissive: isStinky ? 0x99cc77 : 0xffaacc,
+    emissiveIntensity: 0.2,
   });
   const bubble = new THREE.Mesh(geo, mat);
   bubble.position.copy(origin);
-  bubble.position.x += (Math.random() - 0.5) * 0.3;
-  bubble.position.z += (Math.random() - 0.5) * 0.3;
+  bubble.position.x += (Math.random() - 0.5) * 0.4;
+  bubble.position.z += (Math.random() - 0.5) * 0.4;
   bubble.userData.velocity = new THREE.Vector3(
-    (Math.random() - 0.5) * 0.01,
-    0.015 + Math.random() * 0.01,
-    (Math.random() - 0.5) * 0.01
+    -0.005 + (Math.random() - 0.5) * 0.015, // drift slightly away from dog
+    0.018 + Math.random() * 0.015,
+    (Math.random() - 0.5) * 0.015
   );
   bubble.userData.life = 1.0;
   scene.add(bubble);
@@ -1546,9 +1626,11 @@ function animate() {
   for (let i = fartBubbles.length - 1; i >= 0; i--) {
     const b = fartBubbles[i];
     b.position.add(b.userData.velocity);
-    b.userData.life -= 0.012;
-    b.material.opacity = Math.max(0, b.userData.life * 0.5);
-    b.scale.multiplyScalar(1.003); // slowly expand
+    b.userData.life -= 0.008;
+    b.material.opacity = Math.max(0, b.userData.life * 0.55);
+    b.scale.multiplyScalar(1.005); // expand as they rise
+    // Wobble side to side
+    b.position.x += Math.sin(time * 3 + i) * 0.002;
     if (b.userData.life <= 0) {
       scene.remove(b);
       fartBubbles.splice(i, 1);
