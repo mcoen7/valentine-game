@@ -61,14 +61,21 @@
   <div id="busjam-screen" class="screen-hidden">
     <button class="menu-back-btn" id="busjam-menu-btn">← Menu</button>
 
-    <div id="busjam-header">
-      <h2>🐕 Dachshund Bus Jam 🚌</h2>
-      <p id="busjam-subtitle">Tap a bus to send it to its matching pups!</p>
-      <p id="busjam-counter">Buses left: 12</p>
+    <div id="bj-topbar">
+      <button id="bj-restart-btn" class="bj-icon-btn" title="Restart level">↺</button>
+      <h2 id="bj-title">🐕 Dachshund Bus Jam 🚌</h2>
+      <div id="bj-pups-left">Pups left: 0</div>
     </div>
 
-    <div id="busjam-lot"></div>
-    <div id="busjam-queue"></div>
+    <div id="bj-loop"></div>
+
+    <div id="bj-dock"></div>
+
+    <div id="bj-lot"></div>
+
+    <div id="bj-bottombar">
+      <button id="bj-undo-btn" class="bj-icon-btn">↩ Undo <span id="bj-undo-count">3</span></button>
+    </div>
 
     <div id="busjam-modal" class="screen-hidden">
       <div id="busjam-modal-content">
