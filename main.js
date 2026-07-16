@@ -1918,13 +1918,41 @@ function onResize() {
   if (gamePhase) setCameraForPhase(gamePhase);
 }
 
-// ──────────── START ────────────
+// ──────────── START / MENU NAVIGATION ────────────
+let oysterInitialized = false;
+
 document.getElementById('start-btn').addEventListener('click', () => {
   document.getElementById('overlay').style.transition = 'opacity 0.6s';
   document.getElementById('overlay').style.opacity = '0';
   setTimeout(() => {
     document.getElementById('overlay').style.display = 'none';
-    showHint('hint');
+    document.getElementById('menu-screen').classList.remove('screen-hidden');
   }, 600);
-  init();
+});
+
+document.getElementById('menu-oyster').addEventListener('click', () => {
+  document.getElementById('menu-screen').classList.add('screen-hidden');
+  document.getElementById('oyster-screen').classList.remove('screen-hidden');
+  if (!oysterInitialized) {
+    oysterInitialized = true;
+    init();
+    showHint('hint');
+  }
+});
+
+document.getElementById('oyster-menu-btn').addEventListener('click', () => {
+  document.getElementById('oyster-screen').classList.add('screen-hidden');
+  document.getElementById('menu-screen').classList.remove('screen-hidden');
+});
+
+document.getElementById('menu-busjam').addEventListener('click', () => {
+  document.getElementById('menu-screen').classList.add('screen-hidden');
+  document.getElementById('busjam-screen').classList.remove('screen-hidden');
+  initBusJam();
+});
+
+document.getElementById('busjam-menu-btn').addEventListener('click', () => {
+  stopBusJam();
+  document.getElementById('busjam-screen').classList.add('screen-hidden');
+  document.getElementById('menu-screen').classList.remove('screen-hidden');
 });

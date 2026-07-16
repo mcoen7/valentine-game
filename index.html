@@ -13,32 +13,75 @@
     <button id="start-btn">Open</button>
   </div>
 
-  <canvas id="game-canvas"></canvas>
-
-  <div id="sidebar" class="hidden">
-    <h3>🔪 Tools</h3>
-    <div id="knife-btn">
-      <div class="knife-icon">🦪🔪</div>
-      <span>Oyster Knife</span>
+  <div id="menu-screen" class="screen-hidden">
+    <h1>💕 Pick a Game 💕</h1>
+    <div id="menu-cards">
+      <div class="menu-card" id="menu-oyster">
+        <div class="menu-card-icon">🦪</div>
+        <div class="menu-card-title">Oyster Date</div>
+        <div class="menu-card-desc">Shuck, cut &amp; feed the pup</div>
+      </div>
+      <div class="menu-card" id="menu-busjam">
+        <div class="menu-card-icon">🚌</div>
+        <div class="menu-card-title">Dachshund Bus Jam</div>
+        <div class="menu-card-desc">Match colors, clear the lot</div>
+      </div>
     </div>
   </div>
 
-  <div id="hint" class="hidden">Tap screws to unscrew — drag to rotate!</div>
-  <div id="hint-knife" class="hidden">Select the knife, then tap the oyster!</div>
-  <div id="hint-cut" class="hidden">Hold & drag the knife back and forth over the meat to cut!
-    <div id="cut-progress-bar"><div id="cut-progress-fill"></div></div>
-  </div>
-  <div id="hint-lift" class="hidden">Tap the oyster meat to pick it up!</div>
-  <div id="hint-feed" class="hidden">Drag the oyster to the dachshund!</div>
+  <div id="oyster-screen" class="screen-hidden">
+    <button class="menu-back-btn" id="oyster-menu-btn">← Menu</button>
 
-  <div id="reveal" class="hidden">
-    <div id="reveal-content">
-      <h1>Will you be my Valentine? 💕</h1>
-      <div class="hearts-bg"></div>
+    <canvas id="game-canvas"></canvas>
+
+    <div id="sidebar" class="hidden">
+      <h3>🔪 Tools</h3>
+      <div id="knife-btn">
+        <div class="knife-icon">🦪🔪</div>
+        <span>Oyster Knife</span>
+      </div>
+    </div>
+
+    <div id="hint" class="hidden">Tap screws to unscrew — drag to rotate!</div>
+    <div id="hint-knife" class="hidden">Select the knife, then tap the oyster!</div>
+    <div id="hint-cut" class="hidden">Hold & drag the knife back and forth over the meat to cut!
+      <div id="cut-progress-bar"><div id="cut-progress-fill"></div></div>
+    </div>
+    <div id="hint-lift" class="hidden">Tap the oyster meat to pick it up!</div>
+    <div id="hint-feed" class="hidden">Drag the oyster to the dachshund!</div>
+
+    <div id="reveal" class="hidden">
+      <div id="reveal-content">
+        <h1>Will you be my Valentine? 💕</h1>
+        <div class="hearts-bg"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="busjam-screen" class="screen-hidden">
+    <button class="menu-back-btn" id="busjam-menu-btn">← Menu</button>
+
+    <div id="busjam-header">
+      <h2>🐕 Dachshund Bus Jam 🚌</h2>
+      <p id="busjam-subtitle">Tap a bus to send it to its matching pups!</p>
+      <p id="busjam-counter">Buses left: 12</p>
+    </div>
+
+    <div id="busjam-lot"></div>
+    <div id="busjam-queue"></div>
+
+    <div id="busjam-modal" class="screen-hidden">
+      <div id="busjam-modal-content">
+        <h2 id="busjam-modal-title"></h2>
+        <p id="busjam-modal-text"></p>
+        <button id="busjam-retry-btn">Play Again</button>
+        <button id="busjam-modal-menu-btn">Back to Menu</button>
+      </div>
     </div>
   </div>
 
   <script src="https://unpkg.com/three@0.158.0/build/three.min.js"></script>
   <script src="main.js"></script>
+  <script src="busjam.js"></script>
 </body>
 </html>
